@@ -1,0 +1,155 @@
+---
+title: "NHANES Research Analysis"
+output: html_document
+date: "2025-04-17"
+---
+Race
+Household Income
+Poverty Ratio
+Supermarket Spending 
+Disability
+Food Security
+
+Hypothesis: There is a correlation between the race a disabled person identifies as and their economic quality of life. 
+```{r}
+NHANESResearch <- read.csv("/Users/oliviaslaptop/Documents/Data/clean_data")
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(dplyr)
+library(modelsummary)
+library(foreign)
+View(NHANESResearch)
+head(NHANESResearch)
+library(ggplot2)
+library(epitools)
+library(ggmosaic)
+```
+
+Descriptive statistics: You should generate descriptive statistics for each variable
+included in your paper. The descriptive statistics that you use should be appropriate
+for each kind of variable (e.g, nominal, ordinal, and continuous). You should also
+illustrate the descriptive statistics for each variable via appropriate graphs.
+
+```{r}
+
+ggplot(NHANESResearch, aes(x=SMSpend)) + geom_histogram(fill = "turquoise") + labs(title = "Supermarket Spending", x="Supermarket Spending", y="count")
+mean(NHANESResearch$SMSpend)
+median(NHANESResearch$SMSpend)
+sd(NHANESResearch$SMSpend)
+range(NHANESResearch$SMSpend)
+
+ggplot(NHANESResearch, aes(x=PovRatio)) + geom_histogram(fill = "turquoise") + labs(title = "Poverty Ratio", x="Poverty Ratio", y="count")
+mean(NHANESResearch$SMSpend)
+median(NHANESResearch$SMSpend)
+sd(NHANESResearch$SMSpend)
+range(NHANESResearch$SMSpend)
+
+Race_table <- with(NHANESResearch, table(Race))
+prop.table(Race_table)
+Race_barchart <- as.data.frame(prop.table(Race_table)*100)
+Race_barchart
+ggplot(Race_barchart, aes(Race,Freq)) +geom_col(fill="turquoise")
+
+Disability_table <- with(NHANESResearch, table(Disability))
+prop.table(Disability_table)
+Disability_barchart <- as.data.frame(prop.table(Disability_table)*100)
+Disability_barchart
+ggplot(Disability_barchart, aes(Disability,Freq)) +geom_col(fill="turquoise")
+
+HHIncome_table <- with(NHANESResearch, table(HHIncome))
+prop.table(HHIncome_table)
+HHIncome_barchart <- as.data.frame(prop.table(HHIncome_table)*100)
+HHIncome_barchart
+ggplot(HHIncome_barchart, aes(HHIncome,Freq)) +geom_col(fill="turquoise")
+
+FoodSec_table <- with(NHANESResearch, table(FoodSec))
+prop.table(FoodSec_table)
+FoodSec_barchart <- as.data.frame(prop.table(FoodSec_table)*100)
+FoodSec_barchart
+ggplot(FoodSec_barchart, aes(FoodSec,Freq)) +geom_col(fill="turquoise")
+
+RaceD_table <- with(NHANESResearch, table(race_d))
+prop.table(RaceD_table)
+RaceD_barchart <- as.data.frame(prop.table(RaceD_table)*100)
+RaceD_barchart
+ggplot(RaceD_barchart, aes(race_d,Freq)) +geom_col(fill="turquoise")
+
+```
+
+Bivariate statistics: Your analysis must include a minimum of the following
+statistical tests:
+• One T-test
+• One Chi-Square test
+• One ANOVA or Kruskal-Wallis/Dunn test
+• One correlation
+• One linear regression model
+• For each of these statistical tests, you should provide at least one table or graph
+that illustrates these findings.
+T-test
+Compare the means of Poverty Ratio by White disabled and non- white disabled
+```{r}
+NHANESResearch%>%
+  drop_na(Disability)%>%
+  group_by(Disability)%>%
+  summarize(mean(PovRatio), sd(PovRatio), count=n())
+var.test(PovRatio~Disability, data=NHANESResearch, alternative="two.sided")
+t.test(PovRatio~Disability, var.equal=FALSE, data=NHANESResearch)
+ggplot(NHANESResearch, aes(x=Disability, y=PovRatio)) + geom_boxplot(fill="Red") + labs(x="Disability", y="Poverty Ratio", title="Disability by Poverty Ratio")
+```
+The p value is significant. 
+
+Chi square
+Compare the frequency of lower than pov ratio by white disabled and non- white disabled
+```{r}
+RD_FS_table <- xtabs(~ race_d + FoodSec, data=NHANESResearch)
+RD_FS_table
+prop.table(RD_FS_table)*100
+chisq.test(RD_FS_table)
+ggplot(NHANESResearch, aes(x=FoodSec, fill=race_d)) + geom_bar(position = "stack") + labs(title="Race with Disability by FoodSec", x="FoodSec", y="RaceD")
+```
+The p value is significant. 
+
+Kruskal-Wallis/Dunn test
+Supermarket spending by White disabled and non- white disabled
+```{r}
+#ggplot(NHANESdata,aes(x=BMIcat,y=DR1TKCAL))+geom_boxplot(fill="green")+labs(x="BMI category", y= "calories consumed per day", title = "Daily calories by BMIcat")
+library(dunn.test)
+dunn.test(x=NHANESResearch$SMSpend, g=NHANESResearch$race_d, kw=TRUE)
+```
+The P value is significant, but only for certain relationships. Neither disability or race are unilaterally factors in supermarket spending but there are significant differences.
+
+Correlation
+Disability by povratio for white and non- white
+```{r}
+#scatter plot code: 
+ggplot(aes(x=PovRatio, y=SMSpend), data=NHANESResearch) + geom_point(color="red") + geom_smooth(method=lm, color="blue") + labs(x="PovRatio", y="Supermarket Spending") + theme_bw()
+
+#correlation test code: 
+cor.test(NHANESResearch$SMSpend, NHANESResearch$PovRatio, method="pearson")
+```
+The p value is signifcant and there is a weak positive relationship.
+
+Linear regression model
+```{r}
+RaceD_PovRatio_fit <- lm(PovRatio~race_d, data=NHANESResearch)
+summary(RaceD_PovRatio_fit)
+ggplot(aes(x=race_d, y=PovRatio), data=NHANESResearch) + geom_point(color="red") + geom_smooth(method=lm, color="blue") + labs(x="Race with Disability", y="PovRatio") + theme_bw()
+```
+The p value is significant. There is a decreasing correlation between disability status within race and scale on the poverty ratio. There is a large positive relationship between asian disabled and poverty ratio than other races.
+
+Odds Ratio: Your analysis should include at least one odds ratio that explains the
+odds of developing some aspect of your dependent variable
+Likelihood of being disabled by race
+```{r}
+#1. Create the odds table:
+Disability_Race_table <- table(NHANESResearch$Race, NHANESResearch$Disability)
+Disability_Race_table
+#2. Run the oddsratio on the table you created:
+oddsratio(Disability_Race_table)
+#3. Graph the results in a mosaic table:
+ggplot(data=NHANESResearch) + geom_mosaic(aes(x=product(Race), fill=Disability), na.rm=TRUE, show.legend=FALSE) + labs(title="Odds of Disability by Race", x="Disability", y="Race")
+```
+P value is significant only for Non- Hispanic White, Non-Hispanic Asian and Multiracial with an odds ratio of 0.54, 1.83, and 0.49 respectively.
